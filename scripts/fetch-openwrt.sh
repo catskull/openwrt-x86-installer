@@ -17,8 +17,8 @@ get_latest_version() {
         | grep -oE 'href="[0-9]+\.[0-9]+\.[^"]*/"' \
         | sed 's|href="||; s|/"||' \
         | grep -vE 'rc|alpha|beta|SNAPSHOT' \
-        | sort -V -r \
-        | head -1
+        | sort -V \
+        | tail -1
 }
 
 main() {
