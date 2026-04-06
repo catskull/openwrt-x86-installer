@@ -1,2 +1,4 @@
 dist/
 *.qcow2
+*.iso
+.DS_Store
