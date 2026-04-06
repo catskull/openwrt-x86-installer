@@ -82,7 +82,6 @@ main() {
         -outdev "$final_iso"
         -map /tmp/localhost.apkovl.tar.gz /localhost.apkovl.tar.gz
         -boot_image any replay
-        -commit_eject none
     )
 
     if [[ -f "${BUILD_DIR}/openwrt-image/openwrt-bundled.img.gz" ]]; then
@@ -91,6 +90,9 @@ main() {
             -map "${BUILD_DIR}/openwrt-image/version.txt"            /openwrt-version.txt
         )
     fi
+
+    # -commit_eject must come after all -map operations
+    xorriso_args+=(-commit_eject none)
 
     xorriso "${xorriso_args[@]}"
     rm -f "$base_iso"
