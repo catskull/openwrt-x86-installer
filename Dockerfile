@@ -7,6 +7,7 @@ FROM alpine:3.21
 # Build tools required by mkimage.sh
 RUN apk add --no-cache \
     abuild \
+    alpine-conf \
     squashfs-tools \
     xorriso \
     mtools \
