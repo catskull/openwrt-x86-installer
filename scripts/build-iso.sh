@@ -64,10 +64,9 @@ main() {
     xorriso -indev "$base_iso" -find / -maxdepth 1 2>/dev/null | sort || true
     echo ""
     echo "=== grub.cfg ==="
-    xorriso -indev "$base_iso" -find /boot/grub -name "grub.cfg" \
-            -exec echo {} \; 2>/dev/null | while read -r f; do
-        xorriso -indev "$base_iso" -cat "$f" 2>/dev/null || true
-    done
+    xorriso -osirrox on -indev "$base_iso" \
+        -extract /boot/grub/grub.cfg /tmp/grub.cfg 2>/dev/null \
+        && cat /tmp/grub.cfg || echo "(could not extract grub.cfg)"
     echo ""
 
     # --- Generate apkovl explicitly ---
