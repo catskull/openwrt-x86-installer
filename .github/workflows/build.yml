@@ -1,0 +1,85 @@
+name: Build ISO
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  # Weekly rebuild to pick up new OpenWrt stable releases
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      no_cache:
+        description: 'Force fresh OpenWrt download (skip Docker cache)'
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   # required for creating releases
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: openwrt-installer-builder:latest
+          # Cache all layers except on scheduled runs and manual no-cache builds,
+          # so the OpenWrt download stays fresh on a weekly cadence.
+          cache-from: ${{ (github.event_name != 'schedule' && inputs.no_cache != true) && 'type=gha' || '' }}
+          cache-to: ${{ (github.event_name != 'schedule' && inputs.no_cache != true) && 'type=gha,mode=max' || '' }}
+          no-cache: ${{ github.event_name == 'schedule' || inputs.no_cache == true }}
+
+      - name: Build ISO
+        run: |
+          mkdir -p dist
+          docker run --rm \
+            -v "${{ github.workspace }}/dist:/output" \
+            -e OUTPUT_DIR=/output \
+            openwrt-installer-builder
+
+      - name: Read bundled OpenWrt version
+        id: meta
+        run: |
+          VER=$(cat dist/openwrt-version.txt 2>/dev/null || echo "unknown")
+          echo "openwrt_version=$VER" >> "$GITHUB_OUTPUT"
+          echo "Bundled OpenWrt version: $VER"
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openwrt-x86-installer
+          path: dist/openwrt-x86-installer.iso
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ github.ref_name }}"
+          body: |
+            Bootable ISO for installing OpenWrt on x86 systems.
+
+            **Bundled OpenWrt version:** `${{ steps.meta.outputs.openwrt_version }}`
+
+            ## Write to USB
+
+            ```bash
+            # Linux / macOS — replace /dev/sdX with your USB device
+            sudo dd if=openwrt-x86-installer.iso of=/dev/sdX bs=4M status=progress && sync
+            ```
+
+            Boot from the USB drive and follow the on-screen menu to select a
+            disk, choose the OpenWrt version (bundled or download), and install.
+          files: dist/openwrt-x86-installer.iso
+          fail_on_unmatched_files: true
