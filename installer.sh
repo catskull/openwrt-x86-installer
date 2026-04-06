@@ -92,12 +92,23 @@ fetch_stable_versions() {
         | head -15
 }
 
+check_network() {
+    # Quick connectivity check with a short timeout so we fail fast
+    # rather than hanging when no network is available.
+    if ! wget -q --spider --timeout=5 "$RELEASES_URL" 2>/dev/null; then
+        dialog --title "No Internet Access" \
+               --msgbox "Cannot reach downloads.openwrt.org.\n\nCheck that a network cable is connected\nand DHCP has assigned an address:\n\n  ip addr show\n  udhcpc -i eth0" \
+               12 60
+        return 1
+    fi
+}
+
 fetch_rc_versions() {
     wget -qO- "$RELEASES_URL" 2>/dev/null \
         | grep -oE 'href="[0-9]+\.[0-9]+\.[^"]*-rc[^"]*/"' \
         | sed 's|href="||; s|/"||' \
-        | sort -V -r \
-        | head -10
+        | sort -V \
+        | tail -10
 }
 
 select_version() {
@@ -306,6 +317,7 @@ main() {
             version_label="${BUNDLED_VERSION} (bundled)"
             ;;
         stable|rc)
+            check_network || exit 0
             local version
             version=$(select_release_version "$version_choice") || exit 0
 
@@ -322,6 +334,7 @@ main() {
             verify_checksum "$image_path" "$sums_url" || exit 1
             ;;
         snapshot)
+            check_network || exit 0
             image_type=$(select_image_type) || exit 0
 
             local filename="openwrt-x86-64-generic-${image_type}-combined-efi.img.gz"

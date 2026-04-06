@@ -26,10 +26,8 @@ main() {
     fi
     echo "Bundled OpenWrt version: $openwrt_version"
 
-    # --- Patch installer script with version string ---
-    local patched_installer="${APORTS_SCRIPTS}/installer.sh"
-    cp "${BUILD_DIR}/installer.sh" "$patched_installer"
-    sed -i "s|@OPENWRT_VERSION@|${openwrt_version}|g" "$patched_installer"
+    # --- Patch installer script with version string (in-place so genapkovl picks it up) ---
+    sed -i "s|@OPENWRT_VERSION@|${openwrt_version}|g" "${BUILD_DIR}/installer.sh"
 
     # --- Copy profile into aports scripts directory ---
     cp "${BUILD_DIR}/scripts/mkimg.openwrt.sh" "${APORTS_SCRIPTS}/"
