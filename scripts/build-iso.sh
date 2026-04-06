@@ -70,16 +70,12 @@ main() {
     echo ""
 
     # --- Generate apkovl explicitly ---
-    # We do this ourselves rather than relying on mkimage.sh's apkovl variable
-    # so we know exactly what's in the ISO and where.
+    # Done here rather than via mkimage.sh's apkovl profile variable so the
+    # file is verifiably present in the ISO before we ship it.
     echo "Generating apkovl overlay..."
-    cp "${BUILD_DIR}/scripts/genapkovl-openwrt.sh" "${APORTS_SCRIPTS}/"
-    chmod +x "${APORTS_SCRIPTS}/genapkovl-openwrt.sh"
-    "${APORTS_SCRIPTS}/genapkovl-openwrt.sh" "localhost" > /tmp/localhost.apkovl.tar.gz
+    "${BUILD_DIR}/scripts/genapkovl-openwrt.sh" "localhost" > /tmp/localhost.apkovl.tar.gz
     echo "apkovl size: $(du -h /tmp/localhost.apkovl.tar.gz | cut -f1)"
 
-    # --- Inject apkovl + OpenWrt image into the ISO ---
-    echo "Injecting files into ISO..."
     local final_iso="${OUTPUT_DIR}/openwrt-x86-installer.iso"
     local xorriso_args=(
         -indev "$base_iso"
@@ -97,7 +93,7 @@ main() {
     fi
 
     xorriso "${xorriso_args[@]}"
-    [[ "$base_iso" != "$final_iso" ]] && rm -f "$base_iso"
+    rm -f "$base_iso"
 
     # Write version file for CI to read
     cp "${BUILD_DIR}/openwrt-image/version.txt" "${OUTPUT_DIR}/openwrt-version.txt" 2>/dev/null || true

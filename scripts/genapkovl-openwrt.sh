@@ -34,6 +34,7 @@ EOF
 
 # ---- /etc/apk/world ----
 # Packages to install at boot from the ISO's local APK cache.
+# Must stay in sync with the apks list in mkimg.openwrt.sh.
 mkdir -p "$tmp/etc/apk"
 cat > "$tmp/etc/apk/world" <<'EOF'
 alpine-base
