@@ -12,10 +12,9 @@ profile_openwrt() {
 	image_ext="iso"
 	arch="x86_64"
 
-	# Overlay script that generates /etc/inittab, installer script, etc.
-	apkovl="genapkovl-openwrt.sh"
-
 	# Extra packages beyond the standard profile.
+	# The apkovl (auto-login + installer) is injected manually by build-iso.sh
+	# rather than via this variable, so we have explicit control over its contents.
 	# These are cached on the ISO so installation works without internet.
 	apks="$apks
 		bash

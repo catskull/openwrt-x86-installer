@@ -4,8 +4,8 @@
 # Runs inside the Docker build container.
 # 1. Patches the installer script with the bundled OpenWrt version string.
 # 2. Calls Alpine's mkimage.sh to produce the base ISO.
-# 3. Injects the bundled OpenWrt image into the ISO root so the installer
-#    can find it at /media/usb/openwrt-bundled.img.gz after boot.
+# 3. Generates the apkovl (auto-login + installer setup) explicitly.
+# 4. Injects the apkovl and bundled OpenWrt image into the ISO.
 
 set -euo pipefail
 
@@ -31,15 +31,12 @@ main() {
     cp "${BUILD_DIR}/installer.sh" "$patched_installer"
     sed -i "s|@OPENWRT_VERSION@|${openwrt_version}|g" "$patched_installer"
 
-    # --- Copy build scripts into aports scripts directory ---
-    # mkimage.sh sources profile and genapkovl scripts from the same directory.
-    cp "${BUILD_DIR}/scripts/mkimg.openwrt.sh"      "${APORTS_SCRIPTS}/"
-    cp "${BUILD_DIR}/scripts/genapkovl-openwrt.sh"  "${APORTS_SCRIPTS}/"
-    chmod +x "${APORTS_SCRIPTS}/genapkovl-openwrt.sh"
+    # --- Copy profile into aports scripts directory ---
+    cp "${BUILD_DIR}/scripts/mkimg.openwrt.sh" "${APORTS_SCRIPTS}/"
 
     mkdir -p "$OUTPUT_DIR"
 
-    # --- Build the Alpine ISO ---
+    # --- Build the base Alpine ISO ---
     echo "Building ISO..."
     cd "$APORTS_SCRIPTS"
     sh mkimage.sh \
@@ -53,7 +50,6 @@ main() {
     local base_iso
     base_iso=$(find "$OUTPUT_DIR" -name "alpine-openwrt-*.iso" | head -1)
     if [[ -z "$base_iso" ]]; then
-        # mkimage names may vary; grab any ISO produced
         base_iso=$(find "$OUTPUT_DIR" -name "*.iso" | head -1)
     fi
     if [[ -z "$base_iso" ]]; then
@@ -62,29 +58,49 @@ main() {
     fi
     echo "Base ISO: $base_iso"
 
+    # --- Debug: show ISO root and boot config ---
+    echo ""
+    echo "=== ISO root contents ==="
+    xorriso -indev "$base_iso" -find / -maxdepth 1 2>/dev/null | sort || true
+    echo ""
+    echo "=== grub.cfg ==="
+    xorriso -indev "$base_iso" -find /boot/grub -name "grub.cfg" \
+            -exec echo {} \; 2>/dev/null | while read -r f; do
+        xorriso -indev "$base_iso" -cat "$f" 2>/dev/null || true
+    done
+    echo ""
+
+    # --- Generate apkovl explicitly ---
+    # We do this ourselves rather than relying on mkimage.sh's apkovl variable
+    # so we know exactly what's in the ISO and where.
+    echo "Generating apkovl overlay..."
+    cp "${BUILD_DIR}/scripts/genapkovl-openwrt.sh" "${APORTS_SCRIPTS}/"
+    chmod +x "${APORTS_SCRIPTS}/genapkovl-openwrt.sh"
+    "${APORTS_SCRIPTS}/genapkovl-openwrt.sh" "localhost" > /tmp/localhost.apkovl.tar.gz
+    echo "apkovl size: $(du -h /tmp/localhost.apkovl.tar.gz | cut -f1)"
+
+    # --- Inject apkovl + OpenWrt image into the ISO ---
+    echo "Injecting files into ISO..."
     local final_iso="${OUTPUT_DIR}/openwrt-x86-installer.iso"
+    local xorriso_args=(
+        -indev "$base_iso"
+        -outdev "$final_iso"
+        -map /tmp/localhost.apkovl.tar.gz /localhost.apkovl.tar.gz
+        -boot_image any replay
+        -commit_eject none
+    )
 
-    # --- Inject the bundled OpenWrt image into the ISO ---
     if [[ -f "${BUILD_DIR}/openwrt-image/openwrt-bundled.img.gz" ]]; then
-        echo "Injecting bundled OpenWrt image into ISO..."
-        xorriso \
-            -indev "$base_iso" \
-            -outdev "$final_iso" \
-            -map "${BUILD_DIR}/openwrt-image/openwrt-bundled.img.gz" /openwrt-bundled.img.gz \
-            -map "${BUILD_DIR}/openwrt-image/version.txt"            /openwrt-version.txt \
-            -boot_image any replay \
-            -commit_eject none
-
-        # Remove the intermediate ISO if injection produced a new file
-        if [[ "$base_iso" != "$final_iso" ]]; then
-            rm -f "$base_iso"
-        fi
-    else
-        echo "No bundled image — renaming base ISO."
-        mv "$base_iso" "$final_iso"
+        xorriso_args+=(
+            -map "${BUILD_DIR}/openwrt-image/openwrt-bundled.img.gz" /openwrt-bundled.img.gz
+            -map "${BUILD_DIR}/openwrt-image/version.txt"            /openwrt-version.txt
+        )
     fi
 
-    # Write version file to output dir so CI can read it without re-running the container
+    xorriso "${xorriso_args[@]}"
+    [[ "$base_iso" != "$final_iso" ]] && rm -f "$base_iso"
+
+    # Write version file for CI to read
     cp "${BUILD_DIR}/openwrt-image/version.txt" "${OUTPUT_DIR}/openwrt-version.txt" 2>/dev/null || true
 
     echo ""
@@ -92,7 +108,6 @@ main() {
     ls -lh "$final_iso"
     echo ""
     echo "Write to USB:  dd if=$final_iso of=/dev/sdX bs=4M status=progress"
-    echo "               (replace /dev/sdX with your USB device)"
 }
 
 main
