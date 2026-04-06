@@ -6,7 +6,6 @@ FROM alpine:3.21
 
 # Build tools required by mkimage.sh
 RUN apk add --no-cache \
-    alpine-sdk \
     abuild \
     squashfs-tools \
     xorriso \
@@ -19,7 +18,8 @@ RUN apk add --no-cache \
     bash \
     wget \
     git \
-    coreutils
+    coreutils \
+    openssl
 
 # Clone only the scripts/ directory from aports (mkimage.sh + base profiles)
 RUN git clone --depth=1 --filter=blob:none --sparse \
@@ -27,23 +27,15 @@ RUN git clone --depth=1 --filter=blob:none --sparse \
     && cd /aports \
     && git sparse-checkout set scripts
 
-# mkimage.sh must be run by a user in the 'abuild' group.
-# Generate a throw-away RSA signing key for the build.
-RUN addgroup -g 1000 builder \
-    && adduser -D -G abuild -G builder -u 1000 builder
-
-USER builder
-RUN abuild-keygen -a -i -n
-USER root
-
-# Trust the generated public key system-wide (needed by APK inside the build)
-RUN cp /home/builder/.abuild/*.pub /etc/apk/keys/
-
-# mkimage.sh is run as root but needs access to the signing key.
-# Copy the full key pair to root's abuild config.
+# Generate a throw-away RSA key pair for signing the ISO's APK index.
+# abuild-sign (called by mkimage.sh) reads PACKAGER_PRIVKEY from abuild.conf.
+# We use openssl directly to avoid the abuild-keygen user/group dance.
 RUN mkdir -p /root/.abuild \
-    && cp /home/builder/.abuild/* /root/.abuild/ \
-    && echo "PACKAGER_PRIVKEY=$(ls /root/.abuild/*.rsa)" > /root/.abuild/abuild.conf
+    && openssl genrsa -out /root/.abuild/build.rsa 2048 2>/dev/null \
+    && openssl rsa -in /root/.abuild/build.rsa -pubout \
+           -out /root/.abuild/build.rsa.pub 2>/dev/null \
+    && cp /root/.abuild/build.rsa.pub /etc/apk/keys/ \
+    && printf 'PACKAGER_PRIVKEY=/root/.abuild/build.rsa\n' > /root/.abuild/abuild.conf
 
 WORKDIR /build
 
