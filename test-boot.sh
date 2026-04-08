@@ -14,4 +14,4 @@ fi
 qemu-system-x86_64 \
     -m 256m \
     -drive file="$DISK",format=qcow2 \
-    -nic user,model=e1000,hostfwd=tcp::2222-:22,hostfwd=tcp::8080-:80
+    -nic user,model=virtio,hostfwd=tcp::2222-:22,hostfwd=tcp::8080-:80

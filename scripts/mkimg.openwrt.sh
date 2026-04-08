@@ -30,5 +30,5 @@ profile_openwrt() {
 
 	# alpine_dev tells the initramfs where to find APK packages and the
 	# apkovl on the boot media (required for the overlay to be applied).
-	kernel_cmdline="alpine_dev=cdrom:iso9660 quiet modules=loop,squashfs,sd-mod,usb-storage"
+	kernel_cmdline="alpine_dev=cdrom:iso9660 quiet modules=loop,squashfs,sd-mod,usb-storage,af_packet"
 }

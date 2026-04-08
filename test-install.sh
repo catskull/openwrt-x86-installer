@@ -20,4 +20,4 @@ qemu-system-x86_64 \
     -cdrom "$ISO" \
     -drive file="$DISK",format=qcow2 \
     -boot d \
-    -nic user,model=e1000
+    -nic user,model=virtio

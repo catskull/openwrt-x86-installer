@@ -40,13 +40,13 @@ qemu-system-x86_64 \
   -cdrom dist/openwrt-x86-installer.iso \
   -drive file=test-disk.qcow2,format=qcow2 \
   -boot d \
-  -nic user,model=e1000
+  -nic user,model=virtio
 
 # Boot installed system
 qemu-system-x86_64 \
   -m 256m \
   -drive file=test-disk.qcow2,format=qcow2 \
-  -nic user,model=e1000,hostfwd=tcp::2222-:22,hostfwd=tcp::8080-:80
+  -nic user,model=virtio,hostfwd=tcp::2222-:22,hostfwd=tcp::8080-:80
 ```
 
 ## CI
