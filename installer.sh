@@ -207,7 +207,7 @@ download_with_progress() {
         > "$dest"
     local rc=$?
 
-    echo 100 > "$fifo" 2>/dev/null || true
+    kill "$dlg_pid" 2>/dev/null || true
     wait "$dlg_pid" 2>/dev/null || true
     rm -f "$fifo"
 
@@ -289,7 +289,7 @@ write_image() {
     local rc=$?
 
     sync
-    echo 100 > "$fifo" 2>/dev/null || true
+    kill "$dlg_pid" 2>/dev/null || true
     wait "$dlg_pid" 2>/dev/null || true
     rm -f "$fifo"
 
