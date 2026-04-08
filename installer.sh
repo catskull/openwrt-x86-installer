@@ -84,12 +84,12 @@ select_disk() {
 
 # ---- Version selection ----
 fetch_stable_versions() {
-    wget -qO- "$RELEASES_URL" 2>/dev/null \
+    wget -qO- --timeout=15 "$RELEASES_URL" 2>/dev/null \
         | grep -oE 'href="[0-9]+\.[0-9]+\.[^"]*/"' \
         | sed 's|href="||; s|/"||' \
         | grep -vE 'rc|alpha|beta|SNAPSHOT' \
-        | sort -V -r \
-        | head -15
+        | sort -V \
+        | tail -15
 }
 
 check_network() {
@@ -104,7 +104,7 @@ check_network() {
 }
 
 fetch_rc_versions() {
-    wget -qO- "$RELEASES_URL" 2>/dev/null \
+    wget -qO- --timeout=15 "$RELEASES_URL" 2>/dev/null \
         | grep -oE 'href="[0-9]+\.[0-9]+\.[^"]*-rc[^"]*/"' \
         | sed 's|href="||; s|/"||' \
         | sort -V \
@@ -183,7 +183,7 @@ download_with_progress() {
     local dest="$2"
     local title="$3"
 
-    if ! wget -q --spider "$url" 2>/dev/null; then
+    if ! wget -q --spider --timeout=15 "$url" 2>/dev/null; then
         dialog --title "Error" \
                --msgbox "Cannot reach:\n$url\n\nCheck your internet connection." \
                9 72
@@ -191,7 +191,7 @@ download_with_progress() {
     fi
 
     local size
-    size=$(wget --server-response --spider "$url" 2>&1 \
+    size=$(wget --server-response --spider --timeout=15 "$url" 2>&1 \
            | grep -i "content-length" | awk '{print $2}' | tail -1 | tr -d '\r' || echo 0)
     size="${size:-0}"
 
