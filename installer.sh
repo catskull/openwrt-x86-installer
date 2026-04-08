@@ -254,6 +254,18 @@ verify_checksum() {
            8 60 || return 1
 }
 
+# ---- Eject boot media ----
+eject_boot_media() {
+    # Unmount all known installer mount points
+    for mp in /media/cdrom /media/usb /media/sda /media/sda1 /media/sdb /media/sdb1 /media/sr0; do
+        if mountpoint -q "$mp" 2>/dev/null; then
+            umount "$mp" 2>/dev/null || true
+        fi
+    done
+    # Try to eject the CD-ROM
+    eject /dev/sr0 2>/dev/null || true
+}
+
 # ---- Write image ----
 write_image() {
     local image="$1"
@@ -362,25 +374,16 @@ main() {
     write_image "$image_path" "$disk" || exit 1
 
     # Step 5: Done
-    local choice
-    choice=$(dialog --title "Installation Complete" \
-                    --menu "OpenWrt has been installed on /dev/$disk.\n\nRemove the boot media before rebooting." \
-                    13 70 2 \
-                    "reboot" "Reboot now" \
-                    "shell"  "Exit to shell" \
-                    3>&1 1>&2 2>&3) || true
+    dialog --title "Installation Complete" \
+           --yesno "OpenWrt has been installed on /dev/$disk.\n\nThe installer will eject the boot media and power off.\nRemove the USB/CD before powering back on.\n\nPower off now?" \
+           11 70 || { clear; echo "Installation complete. Remove boot media and reboot when ready."; return 0; }
 
     clear
-    case "$choice" in
-        reboot)
-            echo "Rebooting..."
-            reboot
-            ;;
-        *)
-            echo "Installation complete."
-            echo "Remove boot media and type 'reboot' when ready."
-            ;;
-    esac
+    echo "Syncing..."
+    sync
+    eject_boot_media
+    echo "Powering off..."
+    poweroff
 }
 
 main "$@"
