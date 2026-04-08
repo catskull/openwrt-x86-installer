@@ -71,9 +71,18 @@ mkdir -p "$tmp/root"
 cp /build/installer.sh "$tmp/root/installer.sh"
 chmod 755 "$tmp/root/installer.sh"
 
+# ---- /usr/local/bin/install-openwrt ----
+mkdir -p "$tmp/usr/local/bin"
+cat > "$tmp/usr/local/bin/install-openwrt" <<'EOF'
+#!/bin/sh
+exec /root/installer.sh "$@"
+EOF
+chmod 755 "$tmp/usr/local/bin/install-openwrt"
+
 # ---- /root/autostart.sh ----
 # Launched directly by getty.  Waits for APK to finish installing packages
-# (dialog is our canary) before starting the installer.
+# (dialog is our canary) before starting the installer.  After the installer
+# exits for any reason, drop to a shell so the user is not trapped in a loop.
 cat > "$tmp/root/autostart.sh" <<'EOF'
 #!/bin/sh
 export TERM="${TERM:-linux}"
@@ -83,7 +92,12 @@ while ! command -v dialog >/dev/null 2>&1; do
     sleep 2
 done
 clear
-exec /root/installer.sh
+/root/installer.sh || true
+clear
+echo ""
+echo "Installer exited. To relaunch, run:  install-openwrt"
+echo ""
+exec /bin/sh
 EOF
 chmod 755 "$tmp/root/autostart.sh"
 
