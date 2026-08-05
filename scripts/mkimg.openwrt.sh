@@ -26,6 +26,7 @@ profile_openwrt() {
 		coreutils
 		gzip
 		parted
+		openssh-server
 	"
 
 	# alpine_dev tells the initramfs where to find APK packages and the

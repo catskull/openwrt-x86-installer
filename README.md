@@ -14,6 +14,33 @@ make iso
 # output: dist/openwrt-x86-installer.iso
 ```
 
+### Headless install (SSH)
+
+SSH is enabled out of the box with **passwordless root login** — no key or
+password needed:
+
+```bash
+ssh root@<ip>
+install-openwrt
+```
+
+Find `<ip>` from the console banner (if a monitor is attached) or your
+router's DHCP lease list.
+
+> **Security note:** this is a deliberate tradeoff for installer convenience,
+> not a hardened default. Any device that can reach the box on the network
+> while the installer image is running gets an unauthenticated root shell —
+> this applies to the pre-built ISO published on GitHub Releases too, not
+> just boxes you build yourself. Don't leave the installer booted on an
+> untrusted or exposed network any longer than it takes to install, and
+> don't reuse this image as a general-purpose rescue environment left
+> running unattended. The OpenWrt system it installs is unaffected — this
+> only applies to the live installer environment itself.
+>
+> If you'd rather not have passwordless access at all, pass
+> `SSH_AUTHORIZED_KEYS=~/.ssh/id_ed25519.pub` to `make iso` to also bake in a
+> key (harmless either way, just an additional login path).
+
 ### Write to USB
 
 ```bash
@@ -57,9 +84,10 @@ GitHub Release artifact.
 
 ## TODO
 
-- **Headless / SSH support** — enable the OpenSSH server in the live environment
-  by default and verify the installer script works non-interactively (useful for
-  scripted provisioning).
+- **Non-interactive installer** — `installer.sh` is a `dialog` TUI; over SSH
+  it works fine (SSH allocates a pty), but there's no flag-driven/scriptable
+  path yet for fully unattended provisioning (e.g. `install-openwrt --disk
+  sda --version 23.05.4 --type ext4 --yes`).
 
 - **Test unbundled versions** — exercise the stable release list, RC, and snapshot
   download paths end-to-end. Verify checksum validation, progress display, and

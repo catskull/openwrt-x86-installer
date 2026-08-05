@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Boot the installer ISO in QEMU against a fresh test disk.
+# SSH into the live installer:  ssh -p 2223 root@localhost
+# (requires building with SSH_AUTHORIZED_KEYS set, see README)
 set -euo pipefail
 
 ISO="dist/openwrt-x86-installer.iso"
@@ -20,4 +22,4 @@ qemu-system-x86_64 \
     -cdrom "$ISO" \
     -drive file="$DISK",format=qcow2 \
     -boot d \
-    -nic user,model=virtio
+    -nic user,model=virtio,hostfwd=tcp::2223-:22

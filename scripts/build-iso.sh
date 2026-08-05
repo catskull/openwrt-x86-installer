@@ -71,7 +71,13 @@ main() {
     # Done here rather than via mkimage.sh's apkovl profile variable so the
     # file is verifiably present in the ISO before we ship it.
     echo "Generating apkovl overlay..."
-    "${BUILD_DIR}/scripts/genapkovl-openwrt.sh" "localhost" > /tmp/localhost.apkovl.tar.gz
+    echo "SSH: enabled, passwordless root login (see README)."
+    local authorized_keys_arg=()
+    if [[ -s "${BUILD_DIR}/authorized_keys" ]]; then
+        echo "Also baking in SSH authorized_keys from ${BUILD_DIR}/authorized_keys"
+        authorized_keys_arg=("${BUILD_DIR}/authorized_keys")
+    fi
+    "${BUILD_DIR}/scripts/genapkovl-openwrt.sh" "localhost" "${authorized_keys_arg[@]}" > /tmp/localhost.apkovl.tar.gz
     echo "apkovl size: $(du -h /tmp/localhost.apkovl.tar.gz | cut -f1)"
 
     local final_iso="${OUTPUT_DIR}/openwrt-x86-installer.iso"
